@@ -1,0 +1,79 @@
+<beans xmlns="http://www.springframework.org/schema/beans"
+       xmlns:security="http://www.springframework.org/schema/security"
+       xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+       xsi:schemaLocation="http://www.springframework.org/schema/beans
+       http://www.springframework.org/schema/beans/spring-beans.xsd
+       http://www.springframework.org/schema/security
+       http://www.springframework.org/schema/security/spring-security.xsd">
+
+    <!--  Spring-Security 的配置 -->
+    <!-- use-expressions表示开启表达式 -->
+
+    <security:http pattern="/resources/**" security="none"/>
+    <security:http pattern="/" security="none"/>
+    <security:http pattern="/loginView" security="none"/>
+    <security:http pattern="/deniedView" security="none"/>
+    <security:http auto-config="false" use-expressions="true" entry-point-ref="authenticationEntryPoint">
+
+        <!--  Spring-Security 4.X 版本默认开启csrf，这里禁用 -->
+        <security:csrf disabled="true"/>
+
+        <security:access-denied-handler ref="customAuthenticationFailureHandler"/>
+
+        <security:custom-filter ref="loginAuthenticationFilter" position="FORM_LOGIN_FILTER"/>
+        <security:custom-filter ref="filterSecurityInterceptor" before="FILTER_SECURITY_INTERCEPTOR"/>
+
+    </security:http>
+
+    <!--  自定义登录入口 -->
+    <bean id="authenticationEntryPoint"
+          class="org.springframework.security.web.authentication.LoginUrlAuthenticationEntryPoint">
+        <constructor-arg value="/loginView"/>
+    </bean>
+
+    <!--  自定义登录验证filter，不要再用form-login标签，否则可能有冲突 -->
+    <bean id="loginAuthenticationFilter"
+          class="org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter">
+        <!--<property name="usernameParameter" value="userId"/>-->
+        <!--<property name="passwordParameter" value="passCode"/>-->
+        <!-- 自定义登录验证url，由于这里用qsso内置验证，不要加filterProcessesUrl属性 -->
+        <!--<property name="filterProcessesUrl" value="/qlogin"/>-->
+        <property name="authenticationManager" ref="authenticationManager"/>
+        <!--<property name="authenticationFailureHandler">-->
+            <!--<bean class="org.springframework.security.web.authentication.SimpleUrlAuthenticationFailureHandler">-->
+                <!--<property name="defaultFailureUrl" value="/loginView"/>-->
+            <!--</bean>-->
+        <!--</property>-->
+    </bean>
+
+    <!-- 指定一个自定义的authentication-manager :customUserDetailsService -->
+    <security:authentication-manager id="authenticationManager">
+        <security:authentication-provider user-service-ref="customUserDetailsService">
+        </security:authentication-provider>
+    </security:authentication-manager>
+
+    <!-- 自定义用户信息获取方式 -->
+    <bean id="customUserDetailsService" class="com.qunar.hotconfig.security.CustomUserDetailsService"/>
+
+    <!-- 自定义认证管理,资源,权限  -->
+    <bean id="filterSecurityInterceptor"
+          class="org.springframework.security.web.access.intercept.FilterSecurityInterceptor">
+        <property name="authenticationManager"
+                  ref="authenticationManager" />
+        <property name="accessDecisionManager"
+                  ref="accessDecisionManager" />
+        <property name="securityMetadataSource"
+                  ref="securityMetadataSource" />
+    </bean>
+
+    <!-- 自定义资源权限关系认证 -->
+    <bean id="accessDecisionManager"
+          class="com.qunar.hotconfig.security.CustomAccessDecisionManager" />
+
+    <!-- 自定义资源权限关系集合 -->
+    <bean id="securityMetadataSource"
+          class="com.qunar.hotconfig.security.CustomSecurityMetadataSource">
+    </bean>
+
+    <bean id="customAuthenticationFailureHandler" class="com.qunar.hotconfig.security.CustomAuthenticationFailureHandler"/>
+</beans>
